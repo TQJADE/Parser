@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf - 8"?> 
+  <meta>
+    <title>
+      XML Example #1
+    </title>
+    <dependency>
+      <name1>
+        A.cpp
+      </name1>
+      <name2>
+        A.h
+      </name2>
+    </dependency>
+    <status>
+      1
+    </status>
+  </meta>
