@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf - 8"?> 
+  <meta>
+    <title>
+      dependency
+    </title>
+    <dependency>
+      <name1>
+        A.cpp
+      </name1>
+      <name2>
+        B.cpp
+      </name2>
+    </dependency>
+    <dependency>
+      <name1>
+        Ctest.h
+      </name1>
+      <name2>
+        C.cpp
+      </name2>
+    </dependency>
+  </meta>
