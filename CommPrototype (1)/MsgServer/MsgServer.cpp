@@ -84,7 +84,56 @@ private:
   void sendFolderList(HttpMessage& msg, Socket& socket);
   HttpMessage makeMessage(size_t n, const std::string& body, const EndPoint& ep);
   void sendMessage(HttpMessage& msg, Socket& socket);
+  bool sendFile(const std::string& fqname, Socket& socket);
+  void sendSelectFolder(std::string path, Socket& socket);
 };
+void ClientHandler::sendSelectFolder(std::string path, Socket& socket) {
+	std::vector<std::string> files = FileSystem::Directory::getFiles(path, "*.cpp");
+	for (size_t i = 0; i < files.size(); ++i)
+	{
+		Show::write("\n\n  sending file " + files[i]);
+		sendFile(files[i], socket);
+	}
+
+	std::vector<std::string> file = FileSystem::Directory::getFiles(path, "*.h");
+	for (size_t i = 0; i < file.size(); ++i)
+	{
+		Show::write("\n\n  sending file " + file[i]);
+		sendFile(file[i], socket);
+	}
+}
+bool ClientHandler::sendFile(const std::string& filename, Socket& socket) {
+
+	std::string fqname = "../TestFiles/" + filename;
+	FileSystem::FileInfo fi(fqname);
+	size_t fileSize = fi.size();
+	std::string sizeString = Converter<size_t>::toString(fileSize);
+	FileSystem::File file(fqname);
+	file.open(FileSystem::File::in, FileSystem::File::binary);
+	if (!file.isGood())
+		return false;
+
+	HttpMessage msg = makeMessage(1, "", "localhost::8081");
+	msg.addAttribute(HttpMessage::Attribute("file", filename));
+	msg.addAttribute(HttpMessage::Attribute("content-length", sizeString));
+	sendMessage(msg, socket);
+	const size_t BlockSize = 2048;
+	Socket::byte buffer[BlockSize];
+	while (true)
+	{
+		FileSystem::Block blk = file.getBlock(BlockSize);
+		if (blk.size() == 0)
+			break;
+		for (size_t i = 0; i < blk.size(); ++i)
+			buffer[i] = blk[i];
+		socket.send(blk.size(), buffer);
+		if (!file.isGood())
+			break;
+	}
+	file.close();
+	return true;
+}
+
 void ClientHandler::sendMessage(HttpMessage& msg, Socket& socket)
 {
 	std::string msgString = msg.toString();
@@ -279,7 +328,7 @@ void ClientHandler::createXml(std::string path, std::string name, std::vector<st
 	root->addChild(child);
 	if (store.size())
 	{
-		for (int i = 0; i < store.size(); i++)
+		for (int i = 0; i < (int)store.size(); i++)
 		{
 			sPtr child2 = XmlProcessing::makeTaggedElement("dependency");
 			root->addChild(child2);

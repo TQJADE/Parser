@@ -1,3 +1,2 @@
 ﻿  MsgServer.cpp
-c:\users\ood\downloads\commprototype (1)\msgserver\msgserver.cpp(282): warning C4018: '<': signed/unsigned mismatch
-  MsgServer.vcxproj -> C:\Users\ood\Downloads\CommPrototype (1)\Debug\MsgServer.exe
+  MsgServer.vcxproj -> C:\Users\ood\Documents\GitHub\Parser\CommPrototype (1)\Debug\MsgServer.exe

@@ -38,6 +38,7 @@
 #include <string>
 #include <iostream>
 #include <thread>
+#include <direct.h>
 
 using Show = StaticLogger<1>;
 using namespace Utilities;
@@ -73,9 +74,78 @@ private:
   void sendDependency(Socket& socket);
   bool sendFile(const std::string& fqname, Socket& socket);
   HttpMessage readMessage(Socket& socket);
+  void receiveFile(Socket& socket);
+  void downloadFile(const std::string& filename, size_t fileSize, Socket& socket);
  // bool connectionClosed_;
 };
-HttpMessage MsgClient::readMessage(Socket& socket) {
+void MsgClient::downloadFile(const std::string& fqname, size_t fileSize, Socket& socket) {
+	
+	FileSystem::File file(fqname);
+	file.open(FileSystem::File::out, FileSystem::File::binary);
+	if (!file.isGood())
+	{
+		/*
+		* This error handling is incomplete.  The client will continue
+		* to send bytes, but if the file can't be opened, then the server
+		* doesn't gracefully collect and dump them as it should.  That's
+		* an exercise left for students.
+		*/
+		Show::write("\n\n  can't open file " + fqname);
+	}
+
+	const size_t BlockSize = 2048;
+	Socket::byte buffer[BlockSize];
+
+	size_t bytesToRead;
+	while (true)
+	{
+		if (fileSize > BlockSize)
+			bytesToRead = BlockSize;
+		else
+			bytesToRead = fileSize;
+
+		socket.recv(bytesToRead, buffer);
+
+		FileSystem::Block blk;
+		for (size_t i = 0; i < bytesToRead; ++i)
+			blk.push_back(buffer[i]);
+
+		file.putBlock(blk);
+		if (fileSize < BlockSize)
+			break;
+		fileSize -= BlockSize;
+	}
+	file.close();
+}
+//receriveFile
+void MsgClient::receiveFile(Socket& socket) {
+	HttpMessage msg;
+	while (true)
+	{
+		std::string attribString = socket.recvString('\n');
+		if (attribString.size() > 1)
+		{
+			HttpMessage::Attribute attrib = HttpMessage::parseAttribute(attribString);
+			msg.addAttribute(attrib);
+		}
+		else
+		{
+			break;
+		}
+	}
+
+	std::string filename = msg.findValue("file");
+	if (filename != "")
+	{
+		size_t contentSize;
+		std::string sizeString = msg.findValue("content-length");
+		if (sizeString != "")
+			contentSize = Converter<size_t>::toValue(sizeString);
+		downloadFile(filename, contentSize, socket);
+	}
+}
+
+HttpMessage	MsgClient::readMessage(Socket& socket) {
 	Show::write("Client readMessage \n");
 	//connectionClosed_ = false;
 	HttpMessage msg;
@@ -284,7 +354,13 @@ void MsgClient::execute(const size_t TimeBetweenMessages, const size_t NumMessag
 	// send message to check out get all the list of files
 	msg = makeMessage(1, "getList", "toAddr:localhost:8080");
 	sendMessage(msg, si);
-	readMessage(si);
+	msg = readMessage(si);
+	//test for get file
+	std::string path = "../Repository/SunMay11903202016";
+	msg = makeMessage(1, path, "toAddr:localhost:8080");
+	msg.addAttribute(HttpMessage::Attribute("SelectFolder", "SelectFolder"));
+	sendMessage(msg, si);
+	receiveFile(si);
 	Show::write("\n\n  client sent\n" + msg.toIndentedString());
 
     msg = makeMessage(1, "quit", "toAddr:localhost:8080");
