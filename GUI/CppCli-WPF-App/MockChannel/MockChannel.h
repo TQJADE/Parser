@@ -15,11 +15,15 @@
 #endif
 
 #include <string>
+
 using Message = std::string;
 
 struct ISendr
 {
   virtual void postMessage(const Message& msg) = 0;
+  virtual void uploadFile(const Message& msg) = 0;
+  virtual void downloadFileWithout(const Message& msg) = 0;
+  virtual void uploadDependency(const Message& msg) = 0;
 };
 
 struct IRecvr

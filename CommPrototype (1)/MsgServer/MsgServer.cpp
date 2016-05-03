@@ -153,7 +153,7 @@ HttpMessage ClientHandler::dealUploadFile(HttpMessage msg, Socket & socket, std:
 	msg.addBody(bodyString);
 	
 	readFile(filename, contentSize, socket);
-	Show::write("server recerive files" + filename +"\n");
+	Show::write("\n server recerive files" + filename +"\n");
 	return msg;
 }
 //to determine what kind of message
@@ -459,7 +459,7 @@ bool ClientHandler::readFile(const std::string& filename, size_t fileSize, Socke
   file.close();
 
   //test for createXML
-/*  std::vector<std::string> dependency;
+  /*std::vector<std::string> dependency;
   dependency.push_back("A.cpp");
   dependency.push_back("A.h");
   std::vector<std::vector<std::string>> store;

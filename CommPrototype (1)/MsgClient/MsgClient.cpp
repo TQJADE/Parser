@@ -147,7 +147,7 @@ void MsgClient::receiveFile(Socket& socket) {
 		if (sizeString != "")
 			contentSize = Converter<size_t>::toValue(sizeString);
 		downloadFile(filename, contentSize, socket);
-		Show::write("Client download file"+filename + "\n");
+		Show::write("Client download file "+filename + "\n");
 	}
 }
 void MsgClient::sendFolder(Socket& si) {
@@ -354,15 +354,18 @@ void MsgClient::execute(const size_t TimeBetweenMessages, const size_t NumMessag
     }
     HttpMessage msg;
 	//test for upload files
-	//sendFolder(si);
+	sendFolder(si);
 	//test for upload dependency
-	//sendDependency(si);
+	sendDependency(si);
 	// send message to check out get all the list of files
 	//sendGetFolderList(si);
-	//msg = readMessage(si);
+	//readMessage(si);
 	//test for get file
+
 	std::string path = "../Repository/SunMay11903202016";
 	sendDownloadWithout(si,path);
+	::Sleep(200);
+	receiveFile(si);
 	receiveFile(si);
 	Show::write("\n\n  client sent\n" + msg.toIndentedString());
 
@@ -392,10 +395,10 @@ int main()
     [&]() { c1.execute(100, 20); } // 20 messages 100 millisec apart
   );
 
-  MsgClient c2;
+ /* MsgClient c2;
   std::thread t2(
     [&]() { c2.execute(120, 20); } // 20 messages 120 millisec apart
-  );
+  );*/
   t1.join();
-  t2.join();
+//  t2.join();
 }

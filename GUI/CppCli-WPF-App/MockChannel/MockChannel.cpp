@@ -13,6 +13,8 @@
 #include <thread>
 #include <iostream>
 
+
+
 using BQueue = BlockingQueue < Message >;
 
 /////////////////////////////////////////////////////////////////////////////
@@ -50,7 +52,12 @@ private:
 
 Message Recvr::getMessage()
 {
-  return recvQ_.deQ();
+	Message m = recvQ_.deQ();
+	if (m == "file")
+		std::cout << "Get command to upload files in Text folder";
+	//m = "get files";
+		//return m;
+    return recvQ_.deQ();
 }
 
 BQueue& Recvr::queue()
