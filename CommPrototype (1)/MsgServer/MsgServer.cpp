@@ -1,8 +1,8 @@
 /////////////////////////////////////////////////////////////////////////
 // MsgServer.cpp - Demonstrates simple one-way HTTP style messaging    //
 //                 and file transfer                                   //
-//                                                                     //
-// Jim Fawcett, CSE687 - Object Oriented Design, Spring 2016           //
+// Author: Qi Tan  qtan100@syr.edu                                     //
+// Source:Jim Fawcett, CSE687 - Object Oriented Design, Spring 2016    //
 // Application: OOD Project #4                                         //
 // Platform:    Visual Studio 2015, Dell XPS 8900, Windows 10 pro      //
 /////////////////////////////////////////////////////////////////////////
@@ -84,27 +84,152 @@ private:
   void sendFolderList(HttpMessage& msg, Socket& socket);
   HttpMessage makeMessage(size_t n, const std::string& body, const EndPoint& ep);
   void sendMessage(HttpMessage& msg, Socket& socket);
-  bool sendFile(const std::string& fqname, Socket& socket);
+  bool sendFile(const std::string& fqname, Socket& socket,std::string path);
   void sendSelectFolder(std::string path, Socket& socket);
+  HttpMessage dutyDispatcher(HttpMessage msg,Socket& socket);
+  void dealDependency(HttpMessage msg,Socket& socket);
+  HttpMessage dealUploadFile(HttpMessage msg, Socket& socket,std::string name);
 };
+//to get the selected folder
 void ClientHandler::sendSelectFolder(std::string path, Socket& socket) {
 	std::vector<std::string> files = FileSystem::Directory::getFiles(path, "*.cpp");
 	for (size_t i = 0; i < files.size(); ++i)
 	{
 		Show::write("\n\n  sending file " + files[i]);
-		sendFile(files[i], socket);
+		sendFile(files[i], socket, path);
 	}
 
 	std::vector<std::string> file = FileSystem::Directory::getFiles(path, "*.h");
 	for (size_t i = 0; i < file.size(); ++i)
 	{
 		Show::write("\n\n  sending file " + file[i]);
-		sendFile(file[i], socket);
+		sendFile(file[i], socket, path);
 	}
 }
-bool ClientHandler::sendFile(const std::string& filename, Socket& socket) {
+void ClientHandler::dealDependency(HttpMessage msg, Socket& socket) {
+	//sendDependency(socket);
+	size_t numBytes = 0;
+	size_t pos = msg.findAttribute("content-length");
+	std::vector<std::vector<std::string>> store;
+	if (pos < msg.attributes().size())
+	{
+		numBytes = Converter<size_t>::toValue(msg.attributes()[pos].second);
+		Socket::byte* buffer = new Socket::byte[numBytes + 1];
+		socket.recv(numBytes, buffer);
+		buffer[numBytes] = '\0';
+		std::string msgBody(buffer);
+		msg.addBody(msgBody);
+		std::vector<std::string> tokens;
+		std::string buf;
+		std::stringstream ss(msgBody);
+		while (ss >> buf)
+		{
+			size_t pos = buf.find(':');
+			std::string name1 = buf.substr(0, pos);
+			std::string name2 = buf.substr(pos + 1);
+			tokens.push_back(name1);
+			tokens.push_back(name2);
+			store.push_back(tokens);
+			tokens.clear();
+		}
+		delete[] buffer;
+	}
+	createXml("../Repository/", "dependency", store);
+}
+HttpMessage ClientHandler::dealUploadFile(HttpMessage msg, Socket & socket, std::string filename)
+{
+	size_t contentSize;
+	std::string sizeString = msg.findValue("content-length");
+	if (sizeString != "")
+		contentSize = Converter<size_t>::toValue(sizeString);
+	else
+		return msg;
+	// construct message body
 
-	std::string fqname = "../TestFiles/" + filename;
+	msg.removeAttribute("content-length");
+	std::string bodyString = "<file>" + filename + "</file>";
+	sizeString = Converter<size_t>::toString(bodyString.size());
+	msg.addAttribute(HttpMessage::Attribute("content-length", sizeString));
+	msg.addBody(bodyString);
+	
+	readFile(filename, contentSize, socket);
+	Show::write("server recerive files" + filename +"\n");
+	return msg;
+}
+//to determine what kind of message
+HttpMessage ClientHandler::dutyDispatcher(HttpMessage msg,Socket & socket)
+{
+	if (msg.attributes()[0].first == "POST")
+	{
+		//is this a dependency message?
+		std::string dependency = msg.findValue("dependency");
+		if (dependency != "")
+		{
+			dealDependency(msg, socket);
+			return msg;
+		}
+
+		// is this a file message?
+		std::string filename = msg.findValue("file");
+		if (filename != "")
+		{
+			return dealUploadFile(msg,socket,filename);
+			//return msg;
+		}
+
+		//is this a request to download wihout dependency
+		if (msg.attributes().size()>=6 && msg.attributes()[5].first == "SelectFolderWO")
+		{
+			Show::write("Server get request to download without dependency");
+			size_t numBytes = 0;
+			size_t pos = msg.findAttribute("content-length");
+			std::vector<std::vector<std::string>> store;
+			if (pos < msg.attributes().size())
+			{
+				numBytes = Converter<size_t>::toValue(msg.attributes()[pos].second);
+				Socket::byte* buffer = new Socket::byte[numBytes + 1];
+				socket.recv(numBytes, buffer);
+				buffer[numBytes] = '\0';
+				std::string msgBody(buffer);
+				msg.addBody(msgBody);
+				
+				sendSelectFolder(msgBody, socket);
+			}
+			return msg;
+		}
+
+		// is this a request for list of folder?
+		if (msg.bodyString().find("getList"))
+		{
+			Show::write("\nGet request to send folder list \n");
+		    sendFolderList(msg, socket);
+			return msg;
+		}
+
+		
+		// read message body
+		else {
+			size_t numBytes = 0;
+			size_t pos = msg.findAttribute("content-length");
+			if (pos < msg.attributes().size())
+			{
+				numBytes = Converter<size_t>::toValue(msg.attributes()[pos].second);
+				Socket::byte* buffer = new Socket::byte[numBytes + 1];
+				socket.recv(numBytes, buffer);
+				buffer[numBytes] = '\0';
+				std::string msgBody(buffer);
+				msg.addBody(msgBody);
+				delete[] buffer;
+			}
+		}
+	}
+	return msg;
+}
+
+//transfer files via socket
+bool ClientHandler::sendFile(const std::string& filename, Socket& socket,std::string path) {
+
+	std::string fqname = path + "/" + filename;
 	FileSystem::FileInfo fi(fqname);
 	size_t fileSize = fi.size();
 	std::string sizeString = Converter<size_t>::toString(fileSize);
@@ -134,6 +259,7 @@ bool ClientHandler::sendFile(const std::string& filename, Socket& socket) {
 	return true;
 }
 
+//sendMessage
 void ClientHandler::sendMessage(HttpMessage& msg, Socket& socket)
 {
 	std::string msgString = msg.toString();
@@ -162,13 +288,14 @@ void ClientHandler::sendFolderList(HttpMessage& msg, Socket& socket) {
 	m.addAttribute(HttpMessage::Attribute("filePath","filePath"));
 	sendMessage(m, socket);
 }
+
+//check-in store the file in Repository
 HttpMessage ClientHandler::readMessage(Socket& socket)
 {
   connectionClosed_ = false;
   HttpMessage msg;
 
   // read message attributes
-
   while (true)
   {
     std::string attribString = socket.recvString('\n');
@@ -190,92 +317,7 @@ HttpMessage ClientHandler::readMessage(Socket& socket)
     return msg;
   }
   // read body if POST - all messages in this demo are POSTs
-
-
-  if (msg.attributes()[0].first == "POST")
-  {
-    //is this a dependency message?
-	std::string dependency = msg.findValue("dependency");
-	if (dependency != "")
-	{
-		size_t numBytes = 0;
-		size_t pos = msg.findAttribute("content-length");
-		std::vector<std::vector<std::string>> store;
-		if (pos < msg.attributes().size())
-		{
-			numBytes = Converter<size_t>::toValue(msg.attributes()[pos].second);
-			Socket::byte* buffer = new Socket::byte[numBytes + 1];
-			socket.recv(numBytes, buffer);
-			buffer[numBytes] = '\0';
-			std::string msgBody(buffer);
-			msg.addBody(msgBody);
-			std::vector<std::string> tokens;
-			std::string buf;
-			std::stringstream ss(msgBody);
-			while (ss>>buf)
-			{
-				size_t pos = buf.find(':');
-				std::string name1 = buf.substr(0,pos);
-				std::string name2 = buf.substr(pos+1);
-				tokens.push_back(name1);
-				tokens.push_back(name2);
-				store.push_back(tokens);
-				tokens.clear();
-			}
-			delete[] buffer;
-		}
-		
-
-		createXml("../Repository/","dependency",store);
-	}
-
-    // is this a file message?
-    std::string filename = msg.findValue("file");
-    if (filename != "")
-    {
-      size_t contentSize;
-      std::string sizeString = msg.findValue("content-length");
-      if (sizeString != "")
-        contentSize = Converter<size_t>::toValue(sizeString);
-      else
-        return msg;
-
-      readFile(filename, contentSize, socket);
-    }
-
-    if (filename != "")
-    {
-      // construct message body
-
-      msg.removeAttribute("content-length");
-      std::string bodyString = "<file>" + filename + "</file>";
-      std::string sizeString = Converter<size_t>::toString(bodyString.size());
-      msg.addAttribute(HttpMessage::Attribute("content-length", sizeString));
-      msg.addBody(bodyString);
-    }
-    else if(msg.bodyString().find("getList"))
-    {
-		  
-			sendFolderList(msg,socket);
-	}
-      // read message body
-	else{
-      size_t numBytes = 0;
-      size_t pos = msg.findAttribute("content-length");
-      if (pos < msg.attributes().size())
-      {
-        numBytes = Converter<size_t>::toValue(msg.attributes()[pos].second);
-        Socket::byte* buffer = new Socket::byte[numBytes + 1];
-        socket.recv(numBytes, buffer);
-        buffer[numBytes] = '\0';
-        std::string msgBody(buffer);
-        msg.addBody(msgBody);
-        delete[] buffer;
-      }
-    }
-
-	
-  }
+  msg = dutyDispatcher(msg, socket);
   return msg;
 }
 //----< factory for creating messages >------------------------------

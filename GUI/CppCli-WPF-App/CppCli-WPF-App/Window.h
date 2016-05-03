@@ -105,13 +105,7 @@ namespace CppCliWindows
     ScrollViewer^ hScrollViewer1 = gcnew ScrollViewer();
     StackPanel^ hStackPanel1 = gcnew StackPanel();
 
-    String^ msgText 
-      = "Command:ShowMessage\n"   // command
-      + "Sendr:localhost@8080\n"  // send address
-      + "Recvr:localhost@8090\n"  // receive address
-      + "Content-length:44\n"     // body length attribute
-      + "\n"                      // end header
-      + "Hello World\nCSE687 - Object Oriented Design";  // message body
+	String^ msgText = "Connect";
 
     // Controls for FileListView View
     Grid^ hFileListGrid = gcnew Grid();
@@ -125,6 +119,14 @@ namespace CppCliWindows
     Grid^ hGrid2 = gcnew Grid();
 	StackPanel^ hStackPanel2 = gcnew StackPanel();
 	StackPanel^ hStackPanel3 = gcnew StackPanel();
+
+	// Controls for Download View
+	Grid^ hDownloadGrid = gcnew Grid();
+	ListBox^ hDownloadBox = gcnew ListBox();
+	Button^ hGetFolder = gcnew Button();
+	Button^ hDownloadWithD = gcnew Button();
+	Button^ hDownloadWithoutD = gcnew Button();
+	StackPanel^ hDownloadButton = gcnew StackPanel();
     // receive thread
 
     Thread^ recvThread;
@@ -137,9 +139,15 @@ namespace CppCliWindows
     void setUpTabControl();
     void setUpSendMessageView();
     void setUpFileListView();
+	void setUpFileListViewHelp();
     void setUpConnectionView();
 
     void sendMessage(Object^ obj, RoutedEventArgs^ args);
+	void uploadFile(Object^ obj, RoutedEventArgs^ args);
+	void getFolder(Object^ obj, RoutedEventArgs^ args);
+	void downloadWith(Object^ obj, RoutedEventArgs^ args);
+	void downloadWithout(Object^ obj, RoutedEventArgs^ args);
+	std::string messageDispatch(std::string msg);
     void addText(String^ msg);
     void getMessage();
     void clear(Object^ sender, RoutedEventArgs^ args);

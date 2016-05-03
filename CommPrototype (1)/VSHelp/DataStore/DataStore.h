@@ -1,10 +1,27 @@
 #ifndef DATASTORE_H
 #define DATASTORE_H
-/////////////////////////////////////////////////////////////////////
-// DataStore.h - Store results of file search                      //
-//                                                                 //
-// Jim Fawcett, Help Session Demo, Spring 2015                     //
-/////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////
+// MsgServer.cpp - Store results of file search                        //
+//                                                                     //
+// Source: Jim Fawcett, CSE687 - Object Oriented Design, Spring 2016   //
+// Author: Qi Tan, qtan100@syr.edu                                     //
+// Application: OOD Project #4                                         //
+/////////////////////////////////////////////////////////////////////////
+/*
+* This package is to store files in DS
+*/
+/*
+* Required Files:
+*  DataStore.cpp
+*
+* Build Command:
+* ==============
+* devenv DataStore.sln /rebuild debug
+*
+* Maintenance History:
+* ====================
+* version 1.0 first release 2016/05/01
+*/
 
 #include <vector>
 

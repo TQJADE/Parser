@@ -2,7 +2,8 @@
 // Window.cpp - C++\CLI implementation of WPF Application                //
 //          - Demo for CSE 687 Project #4                                //
 // ver 2.0                                                               //
-// Jim Fawcett, CSE687 - Object Oriented Design, Spring 2015             //
+// Source:Jim Fawcett, CSE687 - Object Oriented Design, Spring 2015      //
+// Author: Qi Tan qtan100@syr.edu                                        //
 ///////////////////////////////////////////////////////////////////////////
 /*
 *  To run as a Windows Application:
@@ -20,33 +21,29 @@ using namespace CppCliWindows;
 WPFCppCliDemo::WPFCppCliDemo()
 {
   // set up channel
-
   ObjectFactory* pObjFact = new ObjectFactory;
   pSendr_ = pObjFact->createSendr();
   pRecvr_ = pObjFact->createRecvr();
   pChann_ = pObjFact->createMockChannel(pSendr_, pRecvr_);
   pChann_->start();
   delete pObjFact;
-
   // client's receive thread
-
   recvThread = gcnew Thread(gcnew ThreadStart(this, &WPFCppCliDemo::getMessage));
   recvThread->Start();
-
   // set event handlers
-
   this->Loaded += 
     gcnew System::Windows::RoutedEventHandler(this, &WPFCppCliDemo::OnLoaded);
   this->Closing += 
     gcnew CancelEventHandler(this, &WPFCppCliDemo::Unloading);
- // hSendButton->Click += gcnew RoutedEventHandler(this, &WPFCppCliDemo::sendMessage);
- // hClearButton->Click += gcnew RoutedEventHandler(this, &WPFCppCliDemo::clear);
+  hSendButton->Click += gcnew RoutedEventHandler(this, &WPFCppCliDemo::uploadFile);
+  //hClearButton->Click += gcnew RoutedEventHandler(this, &WPFCppCliDemo::clear);
   hSend->Click += gcnew RoutedEventHandler(this, &WPFCppCliDemo::sendMessage);
   hClear->Click += gcnew RoutedEventHandler(this, &WPFCppCliDemo::clear);
-
   hFolderBrowseButton->Click += gcnew RoutedEventHandler(this, &WPFCppCliDemo::browseForFolder);
   hShowItemsButton->Click += gcnew RoutedEventHandler(this, &WPFCppCliDemo::getItemsFromList);
-
+  hGetFolder->Click += gcnew RoutedEventHandler(this, &WPFCppCliDemo::getFolder);
+  hDownloadWithD ->Click += gcnew RoutedEventHandler(this, &WPFCppCliDemo::downloadWith);
+  hDownloadWithoutD->Click += gcnew RoutedEventHandler(this, &WPFCppCliDemo::downloadWithout);
   // set Window properties
 
   this->Title = "WPF C++/CLI Demo";
@@ -79,7 +76,7 @@ WPFCppCliDemo::~WPFCppCliDemo()
 void WPFCppCliDemo::setUpStatusBar()
 {
   hStatusBar->Items->Add(hStatusBarItem);
-  hStatus->Text = "very important messages will appear here";
+ // hStatus->Text = "very important messages will appear here";
   //status->FontWeight = FontWeights::Bold;
   hStatusBarItem->Content = hStatus;
   hStatusBar->Padding = Thickness(10, 2, 10, 2);
@@ -88,12 +85,12 @@ void WPFCppCliDemo::setUpStatusBar()
 void WPFCppCliDemo::setUpTabControl()
 {
   hGrid->Children->Add(hTabControl);
-  hSendMessageTab->Header = "Send Message";
-  hFileListTab->Header = "File List";
-  hConnectTab->Header = "Connect";
- // hTabControl->Items->Add(hSendMessageTab);
+  hSendMessageTab->Header = "Upload";
+  hFileListTab->Header = "Dependency";
+  hConnectTab->Header = "Download";
+  hTabControl->Items->Add(hSendMessageTab);
   hTabControl->Items->Add(hFileListTab);
- // hTabControl->Items->Add(hConnectTab);
+  hTabControl->Items->Add(hConnectTab);
 }
 
 void WPFCppCliDemo::setTextBlockProperties()
@@ -165,10 +162,44 @@ std::string WPFCppCliDemo::toStdString(String^ pStr)
 
 void WPFCppCliDemo::sendMessage(Object^ obj, RoutedEventArgs^ args)
 {
+  msgText = "dependency";
   pSendr_->postMessage(toStdString(msgText));
   Console::Write("\n  sent message");
   hStatus->Text = "Sent message";
 }
+
+void WPFCppCliDemo::uploadFile(Object^ obj, RoutedEventArgs^ args)
+{
+	msgText = "file";
+	pSendr_->postMessage(toStdString(msgText));
+	Console::Write("\n  sent uploadFile");
+	hStatus->Text = "Sent uploadFile";
+}
+
+void CppCliWindows::WPFCppCliDemo::getFolder(Object ^ obj, RoutedEventArgs ^ args)
+{
+	msgText = "fileList";
+	pSendr_->postMessage(toStdString(msgText));
+	Console::Write("\n  get folder list");
+	hStatus->Text = "get folder list";
+}
+
+void CppCliWindows::WPFCppCliDemo::downloadWith(Object ^ obj, RoutedEventArgs ^ args)
+{
+	msgText = "downloadW";
+	pSendr_->postMessage(toStdString(msgText));
+	Console::Write("\n  download with dependency");
+	hStatus->Text = "download with dependency";
+}
+
+void CppCliWindows::WPFCppCliDemo::downloadWithout(Object ^ obj, RoutedEventArgs ^ args)
+{
+	msgText = "download Without";
+	pSendr_->postMessage(toStdString(msgText));
+	Console::Write("\n  download without dependency");
+	hStatus->Text = "download without dependency";
+}
+
 
 String^ WPFCppCliDemo::toSystemString(std::string& str)
 {
@@ -181,7 +212,9 @@ String^ WPFCppCliDemo::toSystemString(std::string& str)
 void WPFCppCliDemo::addText(String^ msg)
 {
   hTextBlock2->Text += msg + "\n\n";
+  hTextBlock1->Text += msg + "\n\n";
 }
+
 
 void WPFCppCliDemo::getMessage()
 {
@@ -191,15 +224,18 @@ void WPFCppCliDemo::getMessage()
   {
     std::cout << "\n  receive thread calling getMessage()";
     std::string msg = pRecvr_->getMessage();
+	msg = messageDispatch(msg);
     String^ sMsg = toSystemString(msg);
     array<String^>^ args = gcnew array<String^>(1);
     args[0] = sMsg;
-
     Action<String^>^ act = gcnew Action<String^>(this, &WPFCppCliDemo::addText);
     Dispatcher->Invoke(act, args);  // must call addText on main UI thread
   }
 }
 
+std::string WPFCppCliDemo::messageDispatch(std::string msg) {
+	return msg;
+}
 void WPFCppCliDemo::clear(Object^ sender, RoutedEventArgs^ args)
 {
   Console::Write("\n  cleared message text");
@@ -241,7 +277,6 @@ void WPFCppCliDemo::setUpFileListView()
   hFileListGrid->Margin = Thickness(20);
   hFileListTab->Content = hFileListGrid;
   RowDefinition^ hRow1Def = gcnew RowDefinition();
-  //hRow1Def->Height = GridLength(75);
   hFileListGrid->RowDefinitions->Add(hRow1Def);
   Border^ hBorder1 = gcnew Border();
   hBorder1->BorderThickness = Thickness(1);
@@ -265,11 +300,12 @@ void WPFCppCliDemo::setUpFileListView()
   hStackPanel3->Children->Add(text);
   hStackPanel3->Children->Add(hBorder1);
 
- // hStackPanel1->
- // hTextBlock2->Height = 500;
   hFileListGrid->SetRow(hStackPanel3, 0);
   hFileListGrid->Children->Add(hStackPanel3);
+  setUpFileListViewHelp();
+}
 
+void WPFCppCliDemo::setUpFileListViewHelp() {
   RowDefinition^ hRow2Def = gcnew RowDefinition();
   hRow2Def->Height = GridLength(75);
   RowDefinition^ hRow2Def2 = gcnew RowDefinition();
@@ -278,47 +314,27 @@ void WPFCppCliDemo::setUpFileListView()
   hRow2Def->Height = GridLength(75);
   RowDefinition^ hRow2Def4 = gcnew RowDefinition();
   hRow2Def2->Height = GridLength(75);
-
   hFileListGrid->RowDefinitions->Add(hRow2Def);
-  //hFileListGrid->RowDefinitions->Add(hRow2Def2);
-  //hFileListGrid->RowDefinitions->Add(hRow2Def3);
-  //hFileListGrid->RowDefinitions->Add(hRow2Def4);
-
   hFolderBrowseButton->Content = "Select Directory";
   hFolderBrowseButton->Height = 30;
   hFolderBrowseButton->Width = 120;
   hFolderBrowseButton->BorderThickness = Thickness(2);
   hFolderBrowseButton->BorderBrush = Brushes::Black;
-  //hFileListGrid->SetRow(hFolderBrowseButton, 1);
-  //hFileListGrid->Children->Add(hFolderBrowseButton);
-
-  // Show selected items button.
   hShowItemsButton->Content = "Show Selected Items";
   hShowItemsButton->Height = 30;
   hShowItemsButton->Width = 120;
   hShowItemsButton->BorderThickness = Thickness(2);
   hShowItemsButton->BorderBrush = Brushes::Black;
- // hFileListGrid->SetRow(hShowItemsButton, 2);
- // hFileListGrid->Children->Add(hShowItemsButton);
-
-  //Show send message button
   hSend->Content = "Send Message";
   hSend->Height = 30;
   hSend->Width = 120;
   hSend->BorderThickness = Thickness(2);
   hSend->BorderBrush = Brushes::Black;
- // hFileListGrid->SetRow(hSend, 3);
- // hFileListGrid->Children->Add(hSend);
-
-  //Show clear message button
   hClear->Content = "Clear";
   hClear->Height = 30;
   hClear->Width = 120;
   hClear->BorderThickness = Thickness(2);
   hClear->BorderBrush = Brushes::Black;
- // hFileListGrid->SetRow(hClear, 4);
-  //hFileListGrid->Children->Add(hClear);
-
   hStackPanel2->Children->Add(hFolderBrowseButton);
   TextBlock^ hSpacer = gcnew TextBlock();
   hSpacer->Width = 10;
@@ -332,13 +348,10 @@ void WPFCppCliDemo::setUpFileListView()
   hSpacer2->Width = 10;
   hStackPanel2->Children->Add(hSpacer2);
   hStackPanel2->Children->Add(hClear);
-
-
   hStackPanel2->Orientation = Orientation::Horizontal;
   hStackPanel2->HorizontalAlignment = System::Windows::HorizontalAlignment::Center;
   hFileListGrid->SetRow(hStackPanel2, 20);
   hFileListGrid->Children->Add(hStackPanel2);
-
   hFolderBrowserDialog->ShowNewFolderButton = false;
   hFolderBrowserDialog->SelectedPath = System::IO::Directory::GetCurrentDirectory();
 }
@@ -366,7 +379,41 @@ void WPFCppCliDemo::browseForFolder(Object^ sender, RoutedEventArgs^ args)
 }
 void WPFCppCliDemo::setUpConnectionView()
 {
-  Console::Write("\n  setting up Connection view");
+  Console::Write("\n  setting up Download view");
+  hDownloadGrid->Margin = Thickness(20);
+  hConnectTab ->Content = hDownloadGrid;
+  RowDefinition^ hRow1Def = gcnew RowDefinition();
+  hDownloadGrid->RowDefinitions->Add(hRow1Def);
+  hDownloadGrid->SetRow(hDownloadBox, 0);
+  hDownloadGrid->Children->Add(hDownloadBox);
+  hDownloadBox->Width = 350;
+
+  hGetFolder->Content = "Get Folder";
+  hGetFolder->Height = 30;
+  hGetFolder->Width = 120;
+  hGetFolder->BorderThickness = Thickness(2);
+  hGetFolder->BorderBrush = Brushes::Black;
+
+  hDownloadWithD->Content = "Download With Dependency";
+  hDownloadWithD->Height = 30;
+  hDownloadWithD->Width = 120;
+  hDownloadWithD->BorderThickness = Thickness(2);
+  hDownloadWithD->BorderBrush = Brushes::Black;
+
+  hDownloadWithoutD->Content = "Download Without Dependency";
+  hDownloadWithoutD->Height = 30;
+  hDownloadWithoutD->Width = 120;
+  hDownloadWithoutD->BorderThickness = Thickness(2);
+  hDownloadWithoutD->BorderBrush = Brushes::Black;
+
+  hDownloadButton->Children->Add(hGetFolder);
+  hDownloadButton->Children->Add(hDownloadWithD );
+  hDownloadButton->Children->Add(hDownloadWithoutD);
+
+  RowDefinition^ hRow1Def2 = gcnew RowDefinition();
+  hDownloadGrid->RowDefinitions->Add(hRow1Def2);
+  hDownloadGrid->SetRow(hDownloadButton, 1);
+  hDownloadGrid->Children->Add(hDownloadButton);
 }
 
 void WPFCppCliDemo::OnLoaded(Object^ sender, RoutedEventArgs^ args)

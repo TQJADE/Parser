@@ -1,7 +1,7 @@
 /////////////////////////////////////////////////////////////////////////
 // MsgClient.cpp - Demonstrates simple one-way HTTP messaging          //
-//                                                                     //
-// Jim Fawcett, CSE687 - Object Oriented Design, Spring 2016           //
+// Author: Qi Tan qtan100@syr.edu                                      //
+// Source: Jim Fawcett, CSE687 - Object Oriented Design, Spring 2016   //
 // Application: OOD Project #4                                         //
 // Platform:    Visual Studio 2015, Dell XPS 8900, Windows 10 pro      //
 /////////////////////////////////////////////////////////////////////////
@@ -73,14 +73,19 @@ private:
   void sendMessage(HttpMessage& msg, Socket& socket);
   void sendDependency(Socket& socket);
   bool sendFile(const std::string& fqname, Socket& socket);
+  void sendFolder(Socket& socket);
+  void sendDownloadWMessage(Socket& socket);
+  void sendGetFoloderMessage(Socket& socket);
+  void sendDownloadWithout(Socket& socket, std::string path);
+  void sendGetFolderList(Socket& socket);
   HttpMessage readMessage(Socket& socket);
   void receiveFile(Socket& socket);
   void downloadFile(const std::string& filename, size_t fileSize, Socket& socket);
  // bool connectionClosed_;
 };
 void MsgClient::downloadFile(const std::string& fqname, size_t fileSize, Socket& socket) {
-	
-	FileSystem::File file(fqname);
+	std::string path = "Download/" + fqname;
+	FileSystem::File file(path);
 	file.open(FileSystem::File::out, FileSystem::File::binary);
 	if (!file.isGood())
 	{
@@ -142,7 +147,40 @@ void MsgClient::receiveFile(Socket& socket) {
 		if (sizeString != "")
 			contentSize = Converter<size_t>::toValue(sizeString);
 		downloadFile(filename, contentSize, socket);
+		Show::write("Client download file"+filename + "\n");
 	}
+}
+void MsgClient::sendFolder(Socket& si) {
+	std::vector<std::string> files = FileSystem::Directory::getFiles("../TestFiles", "*.cpp");
+	for (size_t i = 0; i < files.size(); ++i)
+	{
+		Show::write("\n\n  sending file " + files[i]);
+		sendFile(files[i], si);
+	}
+}
+
+void MsgClient::sendDownloadWMessage(Socket & socket)
+{
+}
+
+void MsgClient::sendGetFoloderMessage(Socket & socket)
+{
+}
+
+void MsgClient::sendDownloadWithout(Socket & socket,std::string path)
+{
+	HttpMessage msg=makeMessage(1, path, "toAddr:localhost:8080");;
+	//std::string path = "../Repository/SunMay11903202016";
+	Show::write("Send request to download without dependency \n");
+	
+	msg.addAttribute(HttpMessage::Attribute("SelectFolderWO", "SelectFolderWO"));
+	sendMessage(msg, socket);
+}
+
+void MsgClient::sendGetFolderList(Socket & socket)
+{
+	HttpMessage msg = makeMessage(1, "getList", "toAddr:localhost:8080");
+	sendMessage(msg, socket);
 }
 
 HttpMessage	MsgClient::readMessage(Socket& socket) {
@@ -314,52 +352,17 @@ void MsgClient::execute(const size_t TimeBetweenMessages, const size_t NumMessag
       Show::write("\n client waiting to connect");
       ::Sleep(100);
     }
-
-
-    // send a set of messages
-
     HttpMessage msg;
-
-   /* for (size_t i = 0; i < NumMessages; ++i)
-    {
-      std::string msgBody = 
-        "<msg>Message #" + Converter<size_t>::toString(i + 1) + 
-        " from client #" + myCountString + "</msg>";
-      msg = makeMessage(1, msgBody, "localhost:8080");*/
-
-      /*
-       * Sender class will need to accept messages from an input queue
-       * and examine the toAddr attribute to see if a new connection
-       * is needed.  If so, it would either close the existing connection
-       * or save it in a map[url] = socket, then open a new connection.
-       */
-   /*   sendMessage(msg, si);
-      Show::write("\n\n  client" + myCountString + " sent\n" + msg.toIndentedString());
-      ::Sleep(TimeBetweenMessages);
-    }*/
-    //  send all *.cpp files from TestFiles folder
-
-    std::vector<std::string> files = FileSystem::Directory::getFiles("../TestFiles", "*.cpp");
-    for (size_t i = 0; i < files.size(); ++i)
-    {
-      Show::write("\n\n  sending file " + files[i]);
-      sendFile(files[i], si);
-    }
-
-	//msg = makeMessage(1,"","toAddr:localhost:8080");
-
-    // shut down server's client handler
-	sendDependency(si);
-
+	//test for upload files
+	//sendFolder(si);
+	//test for upload dependency
+	//sendDependency(si);
 	// send message to check out get all the list of files
-	msg = makeMessage(1, "getList", "toAddr:localhost:8080");
-	sendMessage(msg, si);
-	msg = readMessage(si);
+	//sendGetFolderList(si);
+	//msg = readMessage(si);
 	//test for get file
 	std::string path = "../Repository/SunMay11903202016";
-	msg = makeMessage(1, path, "toAddr:localhost:8080");
-	msg.addAttribute(HttpMessage::Attribute("SelectFolder", "SelectFolder"));
-	sendMessage(msg, si);
+	sendDownloadWithout(si,path);
 	receiveFile(si);
 	Show::write("\n\n  client sent\n" + msg.toIndentedString());
 

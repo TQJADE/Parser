@@ -1,9 +1,10 @@
-/////////////////////////////////////////////////////////////////////
-// DataStore.cpp - Store results of file search                    //
-//                                                                 //
-// Jim Fawcett, Help Session Demo, Spring 2015                     //
-/////////////////////////////////////////////////////////////////////
-
+/////////////////////////////////////////////////////////////////////////
+// MsgServer.cpp - Store results of file search                        //
+//                                                                     //
+// Source: Jim Fawcett, CSE687 - Object Oriented Design, Spring 2016   //
+// Author: Qi Tan, qtan100@syr.edu                                     //
+// Application: OOD Project #4                                         //
+/////////////////////////////////////////////////////////////////////////
 #include "DataStore.h"
 #include <iostream>
 
